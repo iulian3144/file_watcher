@@ -1,0 +1,9 @@
+# Items from the following list will be used to specify which files will be
+# included in the watch list.
+include:
+  - '.*\.txt'
+
+# Items from the following list will be used to specify which files will be
+# excluded from the watch list. This will overwrite rules from include.
+exclude:
+  - '.*\.log'

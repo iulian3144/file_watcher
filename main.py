@@ -16,6 +16,7 @@ class CopyAction(BaseAction):
             logging.error(f"[CopyAction] Passed argument ({dest}) is not a directory.")
             exit(1)
         self.destination = dest
+        logging.info(f"[ACTION] Matched files will be copied to {self.destination}")
 
     def invoke(self, fullpath, event_type, is_directory=False):
         if not is_directory:
@@ -52,7 +53,7 @@ if __name__ == "__main__":
 
     if args.watch_path is not None:
         watch_path = args.watch_path
-    if args.action not in ACTION_LIST:
+    if action_name not in ACTION_LIST:
         logging.error(f"Action '{args.action}' is not a valid action name!")
         exit(1)
     action = ACTION_LIST[action_name]

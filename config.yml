@@ -7,3 +7,13 @@ include:
 # excluded from the watch list. This will overwrite rules from include.
 exclude:
   - '.*\.log'
+
+# Path to watch for file changes
+watch_path: '.'
+
+# valid action values:
+#   default: echoes file path
+#   copy: copy file to destination dir specified by action_arg
+action: 'default'
+# action argument
+action_arg: ''

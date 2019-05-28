@@ -4,11 +4,20 @@ import time
 import logging
 import config
 import argparse
+import time
+import threading
 from BaseAction import BaseAction
 from EventHandler import EventHandler
 from watchdog.observers.polling import PollingObserver as Observer
 import shutil
 
+
+def get_size_auto(file):
+    size = os.path.getsize(file) / (1 << 10)
+    if size < 900:
+        return f'{size:.2f}KB'
+    size = size / (1 << 10)
+    return f'{size:.2f}MB'
 
 class CopyAction(BaseAction):
     def __init__(self, dest):
@@ -18,10 +27,21 @@ class CopyAction(BaseAction):
         self.destination = dest
         logging.info(f"[ACTION] Matched files will be copied to {self.destination}")
 
+    def copy_file(self, fullpath, event_type):
+        logging.info(f"Copying '{fullpath}' to '{self.destination}'...")
+        t1 = time.time()
+        shutil.copy(fullpath, self.destination)
+        t2 = time.time()
+        time_total = t2 - t1
+        size_auto = get_size_auto(fullpath)
+        logging.info(f"Finished copying '{fullpath}' [{size_auto}] in {time_total:.2f}s")
+
+
     def invoke(self, fullpath, event_type, is_directory=False):
         if not is_directory:
-            logging.info(f"Copying '{fullpath}' to '{self.destination}'...")
-            shutil.copy(fullpath, self.destination)
+            t = threading.Thread(target=self.copy_file, args=(fullpath, event_type))
+            t.start()
+            logging.debug(f"Thread (tid:{t.ident}) created")
 
 ACTION_LIST = {
     'default': BaseAction,

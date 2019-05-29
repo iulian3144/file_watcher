@@ -12,15 +12,27 @@ from watchdog.observers.polling import PollingObserver as Observer
 import shutil
 
 
-def get_size_auto(file):
+# returns file size in KB or MB depending on file size
+# if file size is less than 900KB output size in KB; MB otherwise
+def get_size_auto(file: str):
     size = os.path.getsize(file) / (1 << 10)
     if size < 900:
-        return f'{size:.2f}KB'
+        return f'{size:6.2f}KB'
     size = size / (1 << 10)
-    return f'{size:.2f}MB'
+    return f'{size:6.2f}MB'
+
+# copy a source file to a destination
+# destination must represent a file
+def copyfile(src: str, dest: str):
+    if os.path.isdir(dest):
+        return
+    with open(src, 'rb') as fin:
+        with open(f'{dest}\\{filename}', 'wb') as fout:
+            shutil.copyfileobj(fin, fout, 128*1024)
+
 
 class CopyAction(BaseAction):
-    def __init__(self, dest):
+    def __init__(self, dest: str):
         if not (os.path.exists(dest) and os.path.isdir(dest)):
             logging.error(f"[CopyAction] Passed argument ({dest}) is not a directory.")
             exit(1)
@@ -28,16 +40,22 @@ class CopyAction(BaseAction):
         logging.info(f"[ACTION] Matched files will be copied to {self.destination}")
 
     def copy_file(self, fullpath, event_type):
-        logging.info(f"Copying '{fullpath}' to '{self.destination}'...")
+        dirname, filename = os.path.split(fullpath)
+        # quiet time
+        time.sleep(1)
+        logging.info(
+            f"Copy: <watch_path>\\{filename} to {self.destination}...")
         t1 = time.time()
-        shutil.copy(fullpath, self.destination)
+        copyfile(fullpath, f'{self.destination}\\{filename}')
         t2 = time.time()
         time_total = t2 - t1
+
         size_auto = get_size_auto(fullpath)
-        logging.info(f"Finished copying '{fullpath}' [{size_auto}] in {time_total:.2f}s")
+        logging.info(
+            f"Done: <watch_path>\\{filename:40s} [{size_auto}] in {time_total:.3f}ms")
 
 
-    def invoke(self, fullpath, event_type, is_directory=False):
+    def invoke(self, fullpath: str, event_type: str, is_directory: bool=False):
         if not is_directory:
             t = threading.Thread(target=self.copy_file, args=(fullpath, event_type))
             t.start()
@@ -64,32 +82,37 @@ if __name__ == "__main__":
     DATEFMT = "%d-%m-%Y %H:%M:%S"
     logging.basicConfig(format=FORMAT, datefmt=DATEFMT, level=logging.INFO)
 
-    config_object = config.initialize()
+    watcher_config = config.WatcherConfig()
+    config_object = watcher_config.config_object
     args = parser.parse_args()
 
     action_name = args.action or config_object.action
     action_arg = args.action_arg or config_object.action_arg
     watch_path = args.watch_path or config_object.watch_path
 
-    if args.watch_path is not None:
-        watch_path = args.watch_path
-    if action_name not in ACTION_LIST:
-        logging.error(f"Action '{args.action}' is not a valid action name!")
-        exit(1)
-    action = ACTION_LIST[action_name]
-    logging.info(f'watch path: {watch_path}')
-    logging.info(f'    action: {action_name} ({action})')
-    logging.info(f'action arg: {action_arg}')
+    while True:
+        if action_name not in ACTION_LIST:
+            logging.error(f"Action '{args.action}' is not a valid action name!")
+            exit(1)
+        action = ACTION_LIST[action_name]
+        logging.info(f'watch path: {watch_path}; action({action}): {action_name}({action_arg})')
 
+        event_handler = EventHandler(config_object)
+        event_handler.action = action(action_arg)
+        observer = Observer(timeout=1)
+        observer.schedule(event_handler, watch_path, recursive=False)
+        observer.start()
 
-    event_handler = EventHandler(config_object)
-    event_handler.action = action(action_arg)
-    observer = Observer()
-    observer.schedule(event_handler, watch_path, recursive=False)
-    observer.start()
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
+        if watcher_config.watch_configuration() == config.CONFIG_CHANGED:
+            action_name = config_object.action
+            action_arg = config_object.action_arg
+            watch_path = config_object.watch_path
+            logging.debug("Stopping observer...")
+            observer.stop()
+            logging.debug("Waiting for observer...")
+            observer.join()
+            continue
+        break
+    logging.info("Quitting...")
+    observer.stop()
     observer.join()

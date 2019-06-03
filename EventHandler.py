@@ -2,7 +2,7 @@ import os
 import re
 import time
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
-from BaseAction import BaseAction
+from actions import BaseAction
 import logging
 from config import ConfigObject
 

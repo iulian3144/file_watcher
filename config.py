@@ -12,8 +12,9 @@ CONFIG_CHANGED = 0
 STOP_WATCH = 1
 
 
-class WatcherConfig():
+class WatcherConfig:
     config_object = None
+
     def __init__(self):
         self.config_path = os.path.dirname(sys.argv[0])
         self.config_path = os.path.abspath(self.config_path)
@@ -24,7 +25,7 @@ class WatcherConfig():
     def get_yml_config(self):
         yml_config: Dict = None
         if not os.path.isfile(self.config_path):
-            logging.warn(f"Configuration file '{self.config_path}' does not exist!")
+            logging.warning(f"Configuration file '{self.config_path}' does not exist!")
         else:
             with open(self.config_path, 'r') as config_file:
                 yml_config = yaml.load(config_file, Loader=yaml.BaseLoader)
@@ -48,8 +49,7 @@ class WatcherConfig():
             return STOP_WATCH
 
 
-
-class ConfigObject():
+class ConfigObject:
     def __init__(self, yml_config: Dict):
         self.watch_path = '.'
         self.action = 'default'
@@ -71,7 +71,6 @@ class ConfigObject():
             self.action = yml_config['action']
         if 'action_arg' in yml_config:
             self.action_arg = yml_config['action_arg']
-
 
     @property
     def include_list(self):

@@ -1,16 +1,10 @@
-import os
-import sys
-import time
 import logging
 import config
 import argparse
-import time
-import threading
 from actions import CopyAction
 from actions import BaseAction
 from EventHandler import EventHandler
 from watchdog.observers.polling import PollingObserver as Observer
-import shutil
 
 
 ACTION_LIST = {

@@ -1,3 +1,4 @@
+import os
 import logging
 import config
 import argparse
@@ -8,44 +9,56 @@ from watchdog.observers.polling import PollingObserver as Observer
 
 
 ACTION_LIST = {
-    'default': BaseAction,
-    'copy': CopyAction
+    'default': {
+        "class": BaseAction,
+        "description": "echoes file path"},
+    'copy': {
+        "class": CopyAction,
+        "description": "copy files to the directory specified by <action_arg>"}
 }
 
 parser = argparse.ArgumentParser(
     description='File Watcher', formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('--watch_path', metavar='PATH', dest='watch_path',
                     help='path to watch for file changes', )
-parser.add_argument('--action', metavar='ACTION', dest='action',
-                    help='action name; valid values:\n\
-  copy - copy files to ACTION_ARG\n\
-  default - echo file name')
+parser.add_argument('--action', dest='action', choices=ACTION_LIST.keys(),
+                    help='action name')
 parser.add_argument('--action_arg', metavar='ACTION_ARG', dest='action_arg',
                     help='action argument')
+parser.add_argument('--list_actions', dest="list_actions", action="store_true",
+                    help='list actions')
 
+
+def list_actions():
+    for action_name, definition in ACTION_LIST.items():
+        print(f"{action_name:>10s} : {definition['description']}")
+
+
+LOG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'file_watcher.log')
 if __name__ == "__main__":
     FORMAT = "[%(asctime)s][%(levelname)s] %(message)s"
     DATEFMT = "%d-%m-%Y %H:%M:%S"
-    logging.basicConfig(format=FORMAT, datefmt=DATEFMT, level=logging.INFO)
+    logging.basicConfig(format=FORMAT, level=logging.INFO)
 
     watcher_config = config.WatcherConfig()
     config_object = watcher_config.config_object
     args = parser.parse_args()
+
+    if args.list_actions:
+        list_actions()
+        exit()
 
     action_name = args.action or config_object.action
     action_arg = args.action_arg or config_object.action_arg
     watch_path = args.watch_path or config_object.watch_path
 
     while True:
-        if action_name not in ACTION_LIST:
-            logging.error(f"Action '{args.action}' is not a valid action name!")
-            exit(1)
-        action = ACTION_LIST[action_name]
-        logging.info(f'watch path: {watch_path}; action({action}): {action_name}({action_arg})')
+        action = ACTION_LIST[action_name]['class']
+        logging.info(f'watch path: {watch_path}; action: {action_name}({action_arg})')
 
         event_handler = EventHandler(config_object)
         event_handler.action = action(action_arg)
-        observer = Observer(timeout=1)
+        observer = Observer(timeout=0.5)
         observer.schedule(event_handler, watch_path, recursive=False)
         observer.start()
 

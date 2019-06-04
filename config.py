@@ -68,6 +68,7 @@ class ConfigObject:
         self.action_arg = ''
         self.__include_list = []
         self.__exclude_list = []
+        self.observer_timeout = 0.5
         self.update(yml_config)
 
     def update(self, yml_config: Dict):
@@ -85,6 +86,8 @@ class ConfigObject:
         if 'action_arg' in yml_config:
             self.action_arg = yml_config['action_arg']
             self.action_arg = expand_env_var(self.action_arg)
+        if 'observer_timeout' in yml_config:
+            self.observer_timeout = yml_config['observer_timeout']
 
     @property
     def include_list(self):

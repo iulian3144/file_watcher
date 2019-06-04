@@ -27,6 +27,8 @@ parser.add_argument('--action_arg', metavar='ACTION_ARG', dest='action_arg',
                     help='action argument')
 parser.add_argument('--list_actions', dest="list_actions", action="store_true",
                     help='list actions')
+parser.add_argument('--observer_timeout', metavar='OBS_TIMEOUT', dest="observer_timeout",
+                    help='set observer timeout to OBS_TIMEOUT seconds')
 
 
 def list_actions():
@@ -51,6 +53,7 @@ if __name__ == "__main__":
     action_name = args.action or config_object.action
     action_arg = args.action_arg or config_object.action_arg
     watch_path = args.watch_path or config_object.watch_path
+    observer_timeout = args.observer_timeout or config_object.observer_timeout
 
     while True:
         action = ACTION_LIST[action_name]['class']
@@ -58,7 +61,7 @@ if __name__ == "__main__":
 
         event_handler = EventHandler(config_object)
         event_handler.action = action(action_arg)
-        observer = Observer(timeout=0.5)
+        observer = Observer(timeout=observer_timeout)
         observer.schedule(event_handler, watch_path, recursive=False)
         observer.start()
 
@@ -66,6 +69,7 @@ if __name__ == "__main__":
             action_name = config_object.action
             action_arg = config_object.action_arg
             watch_path = config_object.watch_path
+            observer_timeout = config_object.observer_timeout
             logging.debug("Stopping observer...")
             observer.stop()
             logging.debug("Waiting for observer...")

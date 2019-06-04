@@ -3,6 +3,7 @@ import sys
 import yaml
 import logging
 import time
+import re
 from typing import Dict
 
 
@@ -35,7 +36,7 @@ class WatcherConfig:
     def watch_configuration(self):
         last_mtime = os.path.getmtime(self.config_path)
         try:
-            logging.info("Start watching configuration file...")
+            logging.debug("Start watching configuration file...")
             while True:
                 current_mtime = os.path.getmtime(self.config_path)
                 if current_mtime > last_mtime:
@@ -45,8 +46,19 @@ class WatcherConfig:
                     return CONFIG_CHANGED
                 time.sleep(1)
         except KeyboardInterrupt:
-            logging.info("Stop watching configuration file...")
+            logging.debug("Stop watching configuration file...")
             return STOP_WATCH
+
+
+def expand_env_var(str_var):
+    pattern = r'\${([\w-]+)}'
+    matches = re.finditer(pattern, str_var)
+    for match in matches:
+        env_var_name = match.group(1)
+        env_var_pattern = r'\${(' + env_var_name + r')}'
+        env_var_value = os.getenv(env_var_name, default="")
+        str_var = re.sub(env_var_pattern, env_var_value, str_var)
+    return str_var
 
 
 class ConfigObject:
@@ -67,10 +79,12 @@ class ConfigObject:
             self.__exclude_list = yml_config["exclude"]
         if 'watch_path' in yml_config:
             self.watch_path = yml_config['watch_path']
+            self.watch_path = expand_env_var(self.watch_path)
         if 'action' in yml_config:
             self.action = yml_config['action']
         if 'action_arg' in yml_config:
             self.action_arg = yml_config['action_arg']
+            self.action_arg = expand_env_var(self.action_arg)
 
     @property
     def include_list(self):

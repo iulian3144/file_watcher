@@ -18,6 +18,13 @@ argument.
 - watchdog (Filesystem events monitoring)
 - PyInstaller (`optional` executable creation)
 
+## Build standalone executable
+If you want to build a standalone .exe file you can do this by using [PyInstaller](https://www.pyinstaller.org).
+From the root directory:
+```
+$ pyinstaller main.spec
+```
+
 ## Change log
 - starting with `v0.2`, `config.yml` will be automatically reloaded (after being updated) without
 the need to restart the utility.

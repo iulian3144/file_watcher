@@ -17,6 +17,15 @@ ACTION_LIST = {
         "description": "copy files to the directory specified by <action_arg>"}
 }
 
+LOG_LEVELS = {
+    'notset': logging.NOTSET,
+    'debug': logging.DEBUG,
+    'info': logging.INFO,
+    'warning': logging.WARNING,
+    'error': logging.ERROR,
+    'critical': logging.CRITICAL
+}
+
 parser = argparse.ArgumentParser(
     description='File Watcher', formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('--watch_path', metavar='PATH', dest='watch_path',
@@ -29,6 +38,8 @@ parser.add_argument('--list_actions', dest="list_actions", action="store_true",
                     help='list actions')
 parser.add_argument('--observer_timeout', metavar='OBS_TIMEOUT', dest="observer_timeout",
                     help='set observer timeout to OBS_TIMEOUT seconds')
+parser.add_argument('--loglevel', dest='log_level', choices=LOG_LEVELS.keys(), default='info',
+                    help='specify log level')
 
 
 def list_actions():
@@ -40,11 +51,11 @@ LOG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'file_watch
 if __name__ == "__main__":
     FORMAT = "[%(asctime)s][%(levelname)s] %(message)s"
     DATEFMT = "%d-%m-%Y %H:%M:%S"
-    logging.basicConfig(format=FORMAT, level=logging.INFO)
 
     watcher_config = config.WatcherConfig()
     config_object = watcher_config.config_object
     args = parser.parse_args()
+    logging.basicConfig(format=FORMAT, level=LOG_LEVELS[args.log_level])
 
     if args.list_actions:
         list_actions()
@@ -55,27 +66,20 @@ if __name__ == "__main__":
     watch_path = args.watch_path or config_object.watch_path
     observer_timeout = args.observer_timeout or config_object.observer_timeout
 
-    while True:
-        action = ACTION_LIST[action_name]['class']
-        logging.info(f'watch path: {watch_path}; action: {action_name}({action_arg})')
+    action = ACTION_LIST[action_name]['class']
+    logging.info(f'watch path: {watch_path}; action: {action_name}({action_arg})')
 
-        event_handler = EventHandler(config_object)
-        event_handler.action = action(action_arg)
-        observer = Observer(timeout=observer_timeout)
-        observer.schedule(event_handler, watch_path, recursive=False)
-        observer.start()
+    event_handler = EventHandler(config_object)
+    event_handler.action = action(action_arg)
+    observer = Observer(timeout=observer_timeout)
+    observer.schedule(event_handler, watch_path, recursive=False)
+    observer.start()
 
-        if watcher_config.watch_configuration() == config.CONFIG_CHANGED:
-            action_name = config_object.action
-            action_arg = config_object.action_arg
-            watch_path = config_object.watch_path
-            observer_timeout = config_object.observer_timeout
-            logging.debug("Stopping observer...")
-            observer.stop()
-            logging.debug("Waiting for observer...")
-            observer.join()
-            continue
-        break
-    logging.info("Quitting...")
-    observer.stop()
-    observer.join()
+    try:
+        import time
+        while True:
+            time.sleep(1000)
+    except KeyboardInterrupt:
+        logging.info("Quitting...")
+        observer.stop()
+        observer.join()

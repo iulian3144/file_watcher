@@ -11,7 +11,7 @@ class BaseAction:
 
     def invoke(self, fullpath: str, event_type: str, is_directory: bool = False):
         item_type = "dir" if is_directory else "file"
-        logging.info(f'[{item_type:>4s} {event_type}] path: {fullpath}')
+        logging.info(f'[{item_type:>4s} {event_type}] path: <watch_path>\\{os.path.split(fullpath)[1]}')
 
 
 # returns file size in KB or MB depending on file size

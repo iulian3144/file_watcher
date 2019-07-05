@@ -44,22 +44,32 @@ class CopyAction(BaseAction):
     def __init__(self, args):
         super().__init__(args)
         dest = self.args[0]
-        if not (os.path.exists(dest) and os.path.isdir(dest)):
-            logging.error(
-                f"[{self.__class__.__name__}] Passed argument ({dest}) is not a directory.")
-            exit(1)
-        self.destination = os.path.abspath(dest)
+        self.dst_path = os.path.abspath(dest)
         logging.info(
-            f"[{self.__class__.__name__}] Matched files will be copied to {self.destination}")
+            f"[{self.__class__.__name__}] Matched files will be copied to {self.dst_path}")
 
     def copy_file(self, fullpath):
         dirname, filename = os.path.split(fullpath)
         # quiet time
         time.sleep(1)
+        path_ok = True
+        if not os.path.exists(self.dst_path):
+            logging.error(
+                f"[{self.__class__.__name__}] Destination path ({self.dst_path}) does not exist.")
+            path_ok = False
+        if path_ok and not os.path.isdir(self.dst_path):
+            logging.error(
+                f"[{self.__class__.__name__}] Destination path ({self.dst_path}) is not a directory.")
+            path_ok = False
+
+        if not path_ok:
+            logging.warning(f"[{self.__class__.__name__}] File '{filename}' will not be copied due to errors.")
+            return 1
+
         logging.info(
-            f"Copy START: <watch_path>\\{filename:40s} -> {self.destination}...")
+            f"Copy START: <watch_path>\\{filename:40s} -> {self.dst_path}...")
         t1 = time.perf_counter()
-        dest_filename = os.path.join(self.destination, filename)
+        dest_filename = os.path.join(self.dst_path, filename)
         copyfile(fullpath, dest_filename)
         t2 = time.perf_counter()
         time_total = t2 - t1

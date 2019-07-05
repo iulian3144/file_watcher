@@ -5,9 +5,15 @@ import shutil
 import time
 
 
+class ActionItem:
+    def __init__(self, a_class, a_desc):
+        self.a_class = a_class
+        self.a_desc = a_desc
+
+
 class BaseAction:
-    def __init__(self, arg=''):
-        pass
+    def __init__(self, args=[]):
+        self.args = args
 
     def invoke(self, fullpath: str, event_type: str, is_directory: bool = False):
         item_type = "dir" if is_directory else "file"
@@ -35,8 +41,9 @@ def copyfile(src: str, dest: str):
 
 
 class CopyAction(BaseAction):
-    def __init__(self, dest: str):
-        super().__init__(dest)
+    def __init__(self, args):
+        super().__init__(args)
+        dest = self.args[0]
         if not (os.path.exists(dest) and os.path.isdir(dest)):
             logging.error(
                 f"[{self.__class__.__name__}] Passed argument ({dest}) is not a directory.")
@@ -66,3 +73,9 @@ class CopyAction(BaseAction):
             t = threading.Thread(target=self.copy_file, args=(fullpath,))
             t.start()
             logging.debug(f"Thread (tid:{t.ident}) created")
+
+
+ACTION_LIST = {
+    'default': ActionItem(BaseAction, "echoes file path"),
+    'copy': ActionItem(CopyAction, "copy files to the directory specified by <action_arg>")
+}

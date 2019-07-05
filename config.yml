@@ -1,19 +1,56 @@
-# Items from the following list will be used to specify which files will be
-# included in the watch list.
-include:
-  - '.*\.txt'
+# Configuration layout
+# This file should include an array of objects (map, dict), we will call them
+# watchers. Each watcher should have the following structure:
+# - include:
+#   - '.*\.txt'
+#   - '.*\.c(pp)?'
+#   - '.*\.dll'
+# - exclude:
+#   - '.*\.txt'
+#   - '.*\.c(pp)?'
+#   - '.*\.dll'
+#   watch_path: '<path_to_watch>'
+#   action:
+#     name: <action_type>
+#     args: [<arg_1>, <arg2>, ...<arg_n>]
+#   observer_timeout: <n_seconds>
+# <2nd_watcher>
+# ...
+# <nth_watcher>
+# ------------------------------------------------------------------------------
+# <include> - specifies a list of include rules for files that should trigger an
+#             event;
+#             each rule consists of a python regular expression which is matched
+#             against the file name.
+#             NOTE: by default, nothing is included so you need to specifycally
+#             include each file that you want.
+#             The pattern is matched anywhere in the string, so if you want, for
+#             example, to match any C files, you should careful when creating the
+#             expression (add end of string anchor) so it will not also match files
+#             like "xxx.c.yyy".
+# <exclude> - similar to <include> except that the files matching any of the rule
+#             will not trigger an event. This overrides the rules in <include>.
+#             Generally, you won't need to add anything here except when you would
+#             have, for example, included '.*\.txt' and would like to exclude just
+#             a specific .txt file.
+# <watch_path> - specify the path to watch
+# <action> - specify what action to execute for each of the matched files;
+#   <name> - name of the action; this must exist in ACTION_LIST's keys (see main.py)
+#   <args> - a list of arguments for the action (e.g. for the 'copy' action you
+#            would specify the destination directory)
+# <observer_timeout> - specify the timeout (in seconds) for the filesystem observer
 
-# Items from the following list will be used to specify which files will be
-# excluded from the watch list. This will overwrite rules from include.
-exclude:
-  - '.*\.log'
+watchers:
+  - include: ['.*\.txt']
+    exclude: []
+    watch_path: '.'
+    action:
+      name: 'default'
+      args: []
 
-# Path to watch for file changes
-watch_path: '.'
-
-# valid action values:
-#   default: echoes file path
-#   copy: copy file to destination dir specified by action_arg
-action: 'default'
-# action argument
-action_arg: ''
+  - include: ['.*\.log', '.*\.c(pp)?$', '.*\.dll']
+    exclude: ['f2\..*']
+    watch_path: '.'
+    action:
+      name: copy
+      args: ['test_dst']

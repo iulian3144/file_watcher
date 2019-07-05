@@ -2,26 +2,30 @@ import os
 import sys
 import yaml
 import logging
-import time
 import re
 from typing import Dict
+from watchdog.observers.polling import PollingObserver as Observer
+from EventHandler import EventHandler
+import actions
 
 
 # configuration file must be placed in the same directory with the script
 _CONFIG_FILE = 'config.yml'
 CONFIG_CHANGED = 0
-STOP_WATCH = 1
+STOP_WATCHER = 1
 
 
 class WatcherConfig:
-    config_object = None
+    config_objects = []
 
     def __init__(self):
-        self.config_path = os.path.dirname(sys.argv[0])
-        self.config_path = os.path.abspath(self.config_path)
-        self.config_path = os.path.join(self.config_path, _CONFIG_FILE)
+        # get config file path relative to the script's path
+        tmp_path = os.path.dirname(sys.argv[0])
+        tmp_path = os.path.abspath(tmp_path)
+        self.config_path = os.path.join(tmp_path, _CONFIG_FILE)
         yml_config = self.get_yml_config()
-        self.config_object = ConfigObject(yml_config)
+        for config in yml_config["watchers"]:
+            self.config_objects.append(ConfigObject(config))
 
     def get_yml_config(self):
         yml_config: Dict = None
@@ -31,23 +35,6 @@ class WatcherConfig:
             with open(self.config_path, 'r') as config_file:
                 yml_config = yaml.load(config_file, Loader=yaml.BaseLoader)
         return yml_config
-
-    # blocks until configuration file changes or ^C is pressed
-    def watch_configuration(self):
-        last_mtime = os.path.getmtime(self.config_path)
-        try:
-            logging.debug("Start watching configuration file...")
-            while True:
-                current_mtime = os.path.getmtime(self.config_path)
-                if current_mtime > last_mtime:
-                    logging.info("Reloading configuration file...")
-                    yml_config = self.get_yml_config()
-                    self.config_object.update(yml_config)
-                    return CONFIG_CHANGED
-                time.sleep(1)
-        except KeyboardInterrupt:
-            logging.debug("Stop watching configuration file...")
-            return STOP_WATCH
 
 
 def expand_env_var(str_var):
@@ -64,8 +51,7 @@ def expand_env_var(str_var):
 class ConfigObject:
     def __init__(self, yml_config: Dict):
         self.watch_path = '.'
-        self.action = 'default'
-        self.action_arg = ''
+        self.action = {'name': 'default', 'args': []}
         self.__include_list = []
         self.__exclude_list = []
         self.observer_timeout = 0.5
@@ -83,9 +69,6 @@ class ConfigObject:
             self.watch_path = expand_env_var(self.watch_path)
         if 'action' in yml_config:
             self.action = yml_config['action']
-        if 'action_arg' in yml_config:
-            self.action_arg = yml_config['action_arg']
-            self.action_arg = expand_env_var(self.action_arg)
         if 'observer_timeout' in yml_config:
             self.observer_timeout = yml_config['observer_timeout']
 
@@ -96,3 +79,38 @@ class ConfigObject:
     @property
     def exclude_list(self):
         return self.__exclude_list
+
+
+class WatcherObject:
+    def __init__(self, config):
+        self.action_name = config.action['name']
+        self.action_args = config.action['args']
+        self.watch_path = config.watch_path
+        self.action = actions.ACTION_LIST[self.action_name].a_class
+        self.event_handler = EventHandler(
+            config, self.action(self.action_args))
+        logging.info(
+            f"[event_id:{self.event_handler.event_id}]; watch_path:{self.watch_path}")
+        observer_timeout = config.observer_timeout
+        self.observer = Observer(timeout=observer_timeout)
+
+    def start(self):
+        self.observer.schedule(
+            self.event_handler, self.watch_path, recursive=False)
+        self.observer.start()
+
+
+LOG_LEVELS = {
+    'notset': logging.NOTSET,
+    'debug': logging.DEBUG,
+    'info': logging.INFO,
+    'warning': logging.WARNING,
+    'error': logging.ERROR,
+    'critical': logging.CRITICAL
+}
+
+
+def initialize(log_level):
+    FORMAT = "[%(asctime)s][%(levelname)s] %(message)s"
+    DATEFMT = "%d-%m-%Y %H:%M:%S"
+    logging.basicConfig(format=FORMAT, level=LOG_LEVELS[log_level])

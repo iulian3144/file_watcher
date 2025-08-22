@@ -1,6 +1,6 @@
 altgraph==0.16.1
 argh==0.26.2
-future==0.17.1
+future==1.0.0
 macholib==1.11
 pathtools==0.1.2
 pefile==2019.4.18
